@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Live 複数同時視聴</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎥 YouTube Live 複数同時視聴</h1>
+            <p>複数のYouTube配信を同時に視聴できます</p>
+            <button onclick="openSettings()" class="btn-settings">⚙️ 設定</button>
+        </header>
+
+        <div class="controls">
+            <div class="input-group">
+                <input type="text" id="videoInput" placeholder="YouTube動画URL または 動画IDを入力">
+                <button onclick="addVideo()" class="btn-primary">追加</button>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="channelInput" placeholder="Channel IDを入力（自動でライブを検出）">
+                <button onclick="addChannel()" class="btn-primary">チャンネル追加</button>
+            </div>
+            
+            <div class="layout-controls">
+                <label>レイアウト:</label>
+                <select id="layoutSelect" title="レイアウト選択" onchange="changeLayout()">
+                    <option value="grid">グリッド</option>
+                    <option value="vertical">縦並び</option>
+                    <option value="horizontal">横並び</option>
+                    <option value="pip">ピクチャーインピクチャー</option>
+                </select>
+                
+                <label>列数:</label>
+                <select id="columnsSelect" title="列数を選択" onchange="updateGridColumns()">
+                    <option value="1">1列</option>
+                    <option value="2" selected>2列</option>
+                    <option value="3">3列</option>
+                    <option value="4">4列</option>
+                </select>
+                
+                <button onclick="clearAll()" class="btn-danger">全てクリア</button>
+            </div>
+        </div>
+
+        <div id="videoContainer" class="video-container grid"></div>
+    </div>
+
+    <!-- 設定モーダル -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ 設定</h2>
+                <button class="modal-close" onclick="closeSettings()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-section">
+                    <h3>YouTube Data API</h3>
+                    <div class="setting-item">
+                        <label for="settingsApiKey">APIキー</label>
+                        <input type="text" id="settingsApiKey" placeholder="YouTube Data API キーを入力">
+                        <small>Channel ID機能を使用するには<a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a>でAPIキーを取得してください</small>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>自動更新</h3>
+                    <div class="setting-item">
+                        <label for="updateInterval">更新間隔（分）</label>
+                        <select id="updateInterval">
+                            <option value="1">1分</option>
+                            <option value="3">3分</option>
+                            <option value="5" selected>5分</option>
+                            <option value="10">10分</option>
+                            <option value="15">15分</option>
+                            <option value="30">30分</option>
+                        </select>
+                        <small>チャンネルのライブ配信状態をチェックする間隔</small>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>再生設定</h3>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="autoplayEnabled" checked>
+                            自動再生を有効にする
+                        </label>
+                        <small>動画追加時に自動的に再生を開始（ミュート状態）</small>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="autoMuteEnabled" checked>
+                            自動ミュートを有効にする
+                        </label>
+                        <small>自動再生時に音声をミュート</small>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>表示設定</h3>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="showStatusBadge" checked>
+                            ライブステータスを表示
+                        </label>
+                        <small>配信中、予定、終了などのステータスバッジを表示</small>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="autoRemoveEnded" checked>
+                            終了した配信を自動削除
+                        </label>
+                        <small>更新時に終了したライブ配信を自動的に削除します</small>
+                    </div>
+                </div>
+
+                <div class="setting-section">
+                    <h3>📺 登録チャンネル一覧</h3>
+                    <div id="channelList" class="channel-list"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="saveSettings()" class="btn-primary">保存</button>
+                <button onclick="closeSettings()" class="btn-secondary">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
