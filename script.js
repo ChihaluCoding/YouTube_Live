@@ -762,8 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // 初期表示
-    renderVideos();
+    // 初期表示はloadFromLocalStorage内のchangeLayout()で実行されるため不要
 });
 
 // ローカルストレージに保存（オプション機能）
