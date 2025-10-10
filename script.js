@@ -357,7 +357,7 @@ async function updateAllChannels() {
 
 // 重複した動画IDを削除する関数
 function removeDuplicateVideos() {
-    // 重複を削除（Setを使用）
+    // まず、videos配列の重複を削除（Setを使用）
     const uniqueVideos = [...new Set(videos)];
     
     // 重複があった場合のみログ出力
@@ -370,17 +370,39 @@ function removeDuplicateVideos() {
     // チャンネル情報も重複チェック
     // 複数のチャンネルが同じvideoIdを持っている場合、最初の1つだけを残す
     const seenVideoIds = new Set();
+    const removedChannelVideoIds = new Set();
+    
     channels = channels.filter(channel => {
         if (!channel.videoId) return true; // videoIdがnullの場合は保持
         
         if (seenVideoIds.has(channel.videoId)) {
-            console.log(`重複したチャンネルを統合: ${channel.channelId}`);
+            console.log(`重複したチャンネルを統合: ${channel.channelId} (videoId: ${channel.videoId})`);
+            removedChannelVideoIds.add(channel.videoId);
             return false; // 重複なので削除
         }
         
         seenVideoIds.add(channel.videoId);
         return true;
     });
+    
+    // 削除されたチャンネルのvideoIdで、他に使用していないものはvideos配列からも削除
+    // ただし、seenVideoIdsに含まれているものは残す（他のチャンネルで使用中）
+    videos = videos.filter(videoId => {
+        // 現在のチャンネルで使用されているvideoIdは保持
+        if (seenVideoIds.has(videoId)) {
+            return true;
+        }
+        // 削除されたチャンネルのvideoIdは削除
+        if (removedChannelVideoIds.has(videoId)) {
+            console.log(`未使用の動画IDを削除: ${videoId}`);
+            return false;
+        }
+        // それ以外（手動追加された動画など）は保持
+        return true;
+    });
+    
+    // 最終的にvideos配列の重複を再度削除
+    videos = [...new Set(videos)];
 }
 
 // 自動更新を開始
@@ -458,6 +480,9 @@ function clearAll() {
 // 動画を表示する関数
 async function renderVideos() {
     const container = document.getElementById('videoContainer');
+    
+    // レンダリング前に重複チェックを実行
+    removeDuplicateVideos();
     
     if (videos.length === 0) {
         container.innerHTML = `
@@ -641,6 +666,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ローカルストレージに保存（オプション機能）
 function saveToLocalStorage() {
+    // 保存前に重複を削除
+    removeDuplicateVideos();
+    
     localStorage.setItem('youtubeVideos', JSON.stringify(videos));
     localStorage.setItem('youtubeChannels', JSON.stringify(channels));
     localStorage.setItem('layout', currentLayout);
@@ -700,6 +728,9 @@ function loadFromLocalStorage() {
     if (savedAutoRemoveEnded !== null) {
         autoRemoveEnded = savedAutoRemoveEnded === 'true';
     }
+    
+    // 読み込み後に重複チェック
+    removeDuplicateVideos();
     
     // チャンネルがある場合は自動更新を開始
     if (channels.length > 0 && apiKey) {
