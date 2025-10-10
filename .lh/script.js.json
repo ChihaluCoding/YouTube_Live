@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 4,
+            "activePatchIndex": 5,
             "patches": [
                 {
                     "date": 1760073332779,
@@ -24,6 +24,10 @@
                 {
                     "date": 1760081317717,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -360,38 +360,8 @@\n         renderVideos();\r\n     }\r\n }\r\n \r\n-// 手動で全チャンネルを更新（ボタン用）\r\n-async function manualUpdateAllChannels() {\r\n-    if (channels.length === 0) {\r\n-        alert('登録されているチャンネルがありません');\r\n-        return;\r\n-    }\r\n-    \r\n-    if (!apiKey) {\r\n-        alert('YouTube Data APIキーが設定されていません。設定画面でAPIキーを入力してください。');\r\n-        return;\r\n-    }\r\n-    \r\n-    // 更新中の表示\r\n-    const button = event.target;\r\n-    const originalText = button.textContent;\r\n-    button.textContent = '🔄 更新中...';\r\n-    button.disabled = true;\r\n-    \r\n-    try {\r\n-        await updateAllChannels();\r\n-        alert('全てのチャンネルを更新しました');\r\n-    } catch (error) {\r\n-        console.error('更新エラー:', error);\r\n-        alert('更新中にエラーが発生しました');\r\n-    } finally {\r\n-        button.textContent = originalText;\r\n-        button.disabled = false;\r\n-    }\r\n-}\r\n-\r\n // 重複した動画IDを削除する関数\r\n function removeDuplicateVideos() {\r\n     // まず、videos配列の重複を削除（Setを使用）\r\n     const uniqueVideos = [...new Set(videos)];\r\n"
+                },
+                {
+                    "date": 1760082325307,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -121,8 +121,11 @@\n     \r\n     // 設定変更を反映するため再描画\r\n     renderVideos();\r\n     \r\n+    // 保存して重複を確実に削除\r\n+    saveToLocalStorage();\r\n+    \r\n     alert('設定を保存しました');\r\n }\r\n \r\n // APIキーを保存（旧関数 - 互換性のため残す）\r\n@@ -489,8 +492,20 @@\n     \r\n     // レンダリング前に重複チェックを実行\r\n     removeDuplicateVideos();\r\n     \r\n+    // 既存のプレイヤーを全てクリア\r\n+    Object.keys(players).forEach(videoId => {\r\n+        if (players[videoId] && typeof players[videoId].destroy === 'function') {\r\n+            try {\r\n+                players[videoId].destroy();\r\n+            } catch (e) {\r\n+                console.error('プレイヤー破棄エラー:', e);\r\n+            }\r\n+        }\r\n+    });\r\n+    players = {}; // プレイヤーオブジェクトをリセット\r\n+    \r\n     if (videos.length === 0) {\r\n         container.innerHTML = `\r\n             <div class=\"empty-state\">\r\n                 <h3>動画がありません</h3>\r\n@@ -787,8 +802,11 @@\n     \r\n     // 読み込み後に重複チェック\r\n     removeDuplicateVideos();\r\n     \r\n+    // 重複削除後、LocalStorageに再保存\r\n+    saveToLocalStorage();\r\n+    \r\n     // チャンネルがある場合は自動更新を開始\r\n     if (channels.length > 0 && apiKey) {\r\n         startAutoUpdate();\r\n     }\r\n"
                 }
             ],
             "date": 1760073332779,

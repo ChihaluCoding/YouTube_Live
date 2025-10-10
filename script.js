@@ -122,6 +122,9 @@ function saveSettings() {
     // 設定変更を反映するため再描画
     renderVideos();
     
+    // 保存して重複を確実に削除
+    saveToLocalStorage();
+    
     alert('設定を保存しました');
 }
 
@@ -490,6 +493,18 @@ async function renderVideos() {
     // レンダリング前に重複チェックを実行
     removeDuplicateVideos();
     
+    // 既存のプレイヤーを全てクリア
+    Object.keys(players).forEach(videoId => {
+        if (players[videoId] && typeof players[videoId].destroy === 'function') {
+            try {
+                players[videoId].destroy();
+            } catch (e) {
+                console.error('プレイヤー破棄エラー:', e);
+            }
+        }
+    });
+    players = {}; // プレイヤーオブジェクトをリセット
+    
     if (videos.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -787,6 +802,9 @@ function loadFromLocalStorage() {
     
     // 読み込み後に重複チェック
     removeDuplicateVideos();
+    
+    // 重複削除後、LocalStorageに再保存
+    saveToLocalStorage();
     
     // チャンネルがある場合は自動更新を開始
     if (channels.length > 0 && apiKey) {
