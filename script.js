@@ -366,12 +366,17 @@ async function updateAllChannels() {
 
 // 重複した動画IDを削除する関数
 function removeDuplicateVideos() {
+    console.log('重複チェック開始 - videos:', videos.length, 'channels:', channels.length);
+    console.log('videos配列:', videos);
+    console.log('channels配列:', channels.map(ch => ({id: ch.channelId, name: ch.name, videoId: ch.videoId})));
+    
     // まず、videos配列の重複を削除（Setを使用）
+    const originalVideosLength = videos.length;
     const uniqueVideos = [...new Set(videos)];
     
     // 重複があった場合のみログ出力
     if (uniqueVideos.length < videos.length) {
-        console.log(`重複した動画を削除しました: ${videos.length - uniqueVideos.length}件`);
+        console.log(`videos配列の重複を削除: ${videos.length - uniqueVideos.length}件`);
     }
     
     videos = uniqueVideos;
@@ -380,6 +385,7 @@ function removeDuplicateVideos() {
     // 複数のチャンネルが同じvideoIdを持っている場合、最初の1つだけを残す
     const seenVideoIds = new Set();
     const removedChannelVideoIds = new Set();
+    const originalChannelsLength = channels.length;
     
     channels = channels.filter(channel => {
         if (!channel.videoId) return true; // videoIdがnullの場合は保持
@@ -394,8 +400,13 @@ function removeDuplicateVideos() {
         return true;
     });
     
+    if (channels.length < originalChannelsLength) {
+        console.log(`channels配列から重複を削除: ${originalChannelsLength - channels.length}件`);
+    }
+    
     // 削除されたチャンネルのvideoIdで、他に使用していないものはvideos配列からも削除
     // ただし、seenVideoIdsに含まれているものは残す（他のチャンネルで使用中）
+    const videosBeforeCleanup = videos.length;
     videos = videos.filter(videoId => {
         // 現在のチャンネルで使用されているvideoIdは保持
         if (seenVideoIds.has(videoId)) {
@@ -410,8 +421,21 @@ function removeDuplicateVideos() {
         return true;
     });
     
+    if (videos.length < videosBeforeCleanup) {
+        console.log(`未使用動画ID削除: ${videosBeforeCleanup - videos.length}件`);
+    }
+    
     // 最終的にvideos配列の重複を再度削除
+    const finalVideosLength = videos.length;
     videos = [...new Set(videos)];
+    
+    if (videos.length < finalVideosLength) {
+        console.log(`最終重複削除: ${finalVideosLength - videos.length}件`);
+    }
+    
+    console.log('重複チェック完了 - videos:', videos.length, 'channels:', channels.length);
+    console.log('最終videos配列:', videos);
+    console.log('最終channels配列:', channels.map(ch => ({id: ch.channelId, name: ch.name, videoId: ch.videoId})));
 }
 
 // 自動更新を開始
@@ -488,16 +512,20 @@ function clearAll() {
 
 // 動画を表示する関数
 async function renderVideos() {
+    console.log('renderVideos開始');
     const container = document.getElementById('videoContainer');
     
     // レンダリング前に重複チェックを実行
     removeDuplicateVideos();
     
     // 既存のプレイヤーを全てクリア
-    Object.keys(players).forEach(videoId => {
+    const playerKeys = Object.keys(players);
+    console.log('既存プレイヤーをクリア:', playerKeys);
+    playerKeys.forEach(videoId => {
         if (players[videoId] && typeof players[videoId].destroy === 'function') {
             try {
                 players[videoId].destroy();
+                console.log(`プレイヤー破棄完了: ${videoId}`);
             } catch (e) {
                 console.error('プレイヤー破棄エラー:', e);
             }
@@ -512,14 +540,17 @@ async function renderVideos() {
                 <p>YouTube動画のURLまたはChannel IDを入力して追加してください</p>
             </div>
         `;
+        console.log('renderVideos完了 - 動画なし');
         return;
     }
     
+    console.log(`${videos.length}個の動画をレンダリング開始`);
     container.innerHTML = '';
     
     // 各動画のステータスを取得して表示
     for (let i = 0; i < videos.length; i++) {
         const videoId = videos[i];
+        console.log(`動画レンダリング: ${i + 1}/${videos.length} - ${videoId}`);
         const wrapper = document.createElement('div');
         wrapper.className = 'video-wrapper';
         
