@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 7,
+            "activePatchIndex": 8,
             "patches": [
                 {
                     "date": 1760073332779,
@@ -36,6 +36,10 @@
                 {
                     "date": 1760083311845,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -842,9 +842,9 @@\n         startAutoUpdate();\r\n     }\r\n     \r\n     changeLayout();\r\n-    renderVideos();\r\n+    // changeLayout()内でrenderVideos()が呼ばれるため、ここでは呼ばない\r\n }\r\n \r\n // バックグラウンド再生を維持するための設定\r\n // Page Visibility APIを使用してタブがアクティブになった時に最新位置にシーク\r\n"
+                },
+                {
+                    "date": 1760083710048,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -761,10 +761,9 @@\n             closeSettings();\r\n         }\r\n     });\r\n     \r\n-    // 初期表示\r\n-    renderVideos();\r\n+    // 初期表示はloadFromLocalStorage内のchangeLayout()で実行されるため不要\r\n });\r\n \r\n // ローカルストレージに保存（オプション機能）\r\n function saveToLocalStorage() {\r\n"
                 }
             ],
             "date": 1760073332779,

@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 2,
+            "activePatchIndex": 8,
             "patches": [
                 {
                     "date": 1760073332171,
@@ -16,6 +16,30 @@
                 {
                     "date": 1760080642105,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -156,8 +156,14 @@\n     transform: translateY(-2px);\r\n     box-shadow: 0 4px 8px rgba(0,0,0,0.2);\r\n }\r\n \r\n+button:disabled {\r\n+    opacity: 0.6;\r\n+    cursor: not-allowed;\r\n+    transform: none !important;\r\n+}\r\n+\r\n .layout-controls {\r\n     display: flex;\r\n     gap: 15px;\r\n     align-items: center;\r\n"
+                },
+                {
+                    "date": 1760094915108,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -522,9 +522,8 @@\n     padding: 5px;\r\n }\r\n \r\n .channel-item {\r\n-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\r\n     color: white;\r\n     padding: 12px;\r\n     border-radius: 8px;\r\n     box-shadow: 0 2px 4px rgba(0,0,0,0.2);\r\n"
+                },
+                {
+                    "date": 1760094929679,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,8 @@\n }\r\n \r\n body {\r\n     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\r\n-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\r\n     min-height: 100vh;\r\n     padding: 20px;\r\n }\r\n \r\n@@ -522,8 +521,9 @@\n     padding: 5px;\r\n }\r\n \r\n .channel-item {\r\n+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\r\n     color: white;\r\n     padding: 12px;\r\n     border-radius: 8px;\r\n     box-shadow: 0 2px 4px rgba(0,0,0,0.2);\r\n"
+                },
+                {
+                    "date": 1760094957917,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,8 +5,9 @@\n }\r\n \r\n body {\r\n     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\r\n+    background-color: ;\r\n     min-height: 100vh;\r\n     padding: 20px;\r\n }\r\n \r\n"
+                },
+                {
+                    "date": 1760094966565,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n }\r\n \r\n body {\r\n     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\r\n-    background-color: ;\r\n+    background-color: #cbfffe;\r\n     min-height: 100vh;\r\n     padding: 20px;\r\n }\r\n \r\n"
+                },
+                {
+                    "date": 1760094974608,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n }\r\n \r\n body {\r\n     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\r\n-    background-color: #cbfffe;\r\n+    background-color: #8abadb;\r\n     min-height: 100vh;\r\n     padding: 20px;\r\n }\r\n \r\n"
+                },
+                {
+                    "date": 1760095023307,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -5,9 +5,9 @@\n }\r\n \r\n body {\r\n     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\r\n-    background-color: #8abadb;\r\n+    background-color: #cdecff;\r\n     min-height: 100vh;\r\n     padding: 20px;\r\n }\r\n \r\n"
                 }
             ],
             "date": 1760073332171,

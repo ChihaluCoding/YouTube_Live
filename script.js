@@ -282,20 +282,35 @@ async function getVideoStatus(videoId) {
         if (data.items && data.items.length > 0) {
             const video = data.items[0];
             const snippet = video.snippet;
+            const liveDetails = video.liveStreamingDetails;
+            
+            console.log(`ステータス取得: ${videoId} - liveBroadcastContent: ${snippet.liveBroadcastContent}`);
             
             if (snippet.liveBroadcastContent === 'live') {
                 return { status: 'live', title: snippet.title };
             } else if (snippet.liveBroadcastContent === 'upcoming') {
                 return { status: 'upcoming', title: snippet.title };
+            } else if (snippet.liveBroadcastContent === 'none') {
+                // 'none'の場合、actualEndTimeがある場合のみ終了と判定
+                if (liveDetails && liveDetails.actualEndTime) {
+                    return { status: 'ended', title: snippet.title };
+                } else {
+                    // 終了時刻が記録されていない場合は不明として扱う（削除しない）
+                    console.warn(`動画 ${videoId} は liveBroadcastContent='none' だが actualEndTime がありません`);
+                    return { status: 'unknown', title: snippet.title };
+                }
             } else {
                 return { status: 'ended', title: snippet.title };
             }
         }
         
+        // 動画が見つからない場合（削除された等）
+        console.warn(`動画 ${videoId} が見つかりませんでした`);
         return { status: 'unknown', title: '' };
     } catch (error) {
         console.error('Error getting video status:', error);
-        return { status: 'error', title: '' };
+        // エラー時は不明として扱う（削除しない）
+        return { status: 'unknown', title: '' };
     }
 }
 
@@ -342,7 +357,7 @@ async function updateAllChannels() {
             if (apiKey && channelInfo) {
                 const videoStatus = await getVideoStatus(videoId);
                 
-                // 終了した配信を削除
+                // 明確に終了した配信のみ削除（unknownやerrorは削除しない）
                 if (videoStatus.status === 'ended') {
                     console.log(`配信が終了したため削除: ${videoId} - ${videoStatus.title}`);
                     videos.splice(i, 1);
@@ -351,6 +366,8 @@ async function updateAllChannels() {
                     channelInfo.videoId = null;
                     channelInfo.status = 'none';
                     hasChanges = true;
+                } else if (videoStatus.status === 'unknown') {
+                    console.warn(`配信 ${videoId} のステータスが不明のため、削除をスキップしました`);
                 }
             }
         }
