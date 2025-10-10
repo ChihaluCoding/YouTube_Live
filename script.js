@@ -843,7 +843,7 @@ function loadFromLocalStorage() {
     }
     
     changeLayout();
-    renderVideos();
+    // changeLayout()内でrenderVideos()が呼ばれるため、ここでは呼ばない
 }
 
 // バックグラウンド再生を維持するための設定
