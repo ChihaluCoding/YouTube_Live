@@ -157,6 +157,12 @@ button {
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
 .layout-controls {
     display: flex;
     gap: 15px;
