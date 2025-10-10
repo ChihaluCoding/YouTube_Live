@@ -10,12 +10,18 @@ let autoplayEnabled = true;
 let autoMuteEnabled = true;
 let showStatusBadge = true;
 let autoRemoveEnded = true; // 終了した配信を自動削除
+let players = {}; // YouTube Player オブジェクトを管理
 
 // YouTube IFrame APIを読み込む
 const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 const firstScriptTag = document.getElementsByTagName('script')[0];
 firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+// YouTube IFrame API の準備完了コールバック
+let onYouTubeIframeAPIReady = function() {
+    console.log('YouTube IFrame API が読み込まれました');
+};
 
 // YouTube動画IDを抽出する関数
 function extractVideoId(input) {
@@ -546,17 +552,67 @@ async function renderVideos() {
             <button class="remove-btn" onclick="removeVideo('${videoId}')" title="削除">×</button>
             ${statusHtml}
             <div class="video-aspect">
+                <div id="player-${videoId}"></div>
+            </div>
+        `;
+        
+        container.appendChild(wrapper);
+        
+        // YouTube Player を初期化
+        if (typeof YT !== 'undefined' && YT.Player) {
+            players[videoId] = new YT.Player(`player-${videoId}`, {
+                videoId: videoId,
+                playerVars: {
+                    autoplay: autoplay,
+                    mute: mute,
+                    playsinline: 1,
+                    controls: 1,
+                    modestbranding: 1,
+                    rel: 0,
+                    enablejsapi: 1
+                },
+                events: {
+                    'onReady': function(event) {
+                        // プレイヤーの準備が完了
+                        if (autoplay) {
+                            event.target.playVideo();
+                        }
+                    }
+                }
+            });
+        } else {
+            // IFrame API が読み込まれていない場合は従来の iframe を使用
+            const playerDiv = document.getElementById(`player-${videoId}`);
+            playerDiv.innerHTML = `
                 <iframe
                     src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=${autoplay}&mute=${mute}&playsinline=1&controls=1&modestbranding=1&rel=0"
                     frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowfullscreen
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
                 ></iframe>
-            </div>
-        `;
-        
-        container.appendChild(wrapper);
+            `;
+        }
     }
+}
+
+// タブがアクティブになった時にライブ配信を最新位置にシーク
+function seekToLive() {
+    Object.keys(players).forEach(videoId => {
+        const player = players[videoId];
+        if (player && typeof player.seekTo === 'function') {
+            try {
+                const duration = player.getDuration();
+                if (duration > 0) {
+                    // ライブ配信の場合、最新の位置（duration付近）にシーク
+                    player.seekTo(duration, true);
+                    console.log(`${videoId} を最新位置にシークしました`);
+                }
+            } catch (e) {
+                console.error('シークエラー:', e);
+            }
+        }
+    });
 }
 
 // チャンネルリストを表示する関数
@@ -742,10 +798,15 @@ function loadFromLocalStorage() {
 }
 
 // バックグラウンド再生を維持するための設定
-// Page Visibility APIを使用してタブがバックグラウンドになっても再生を継続
+// Page Visibility APIを使用してタブがアクティブになった時に最新位置にシーク
 document.addEventListener('visibilitychange', () => {
-    // visibilitychangeイベントは発生するが、特に何もしない
-    // これにより、ブラウザによる自動停止をできるだけ防ぐ
+    if (!document.hidden) {
+        // タブがアクティブになった時
+        console.log('タブがアクティブになりました。ライブ配信を最新位置にシークします...');
+        setTimeout(() => {
+            seekToLive();
+        }, 500); // 少し遅延させてから実行
+    }
 });
 
 // チャンネル設定をエクスポート

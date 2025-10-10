@@ -277,7 +277,8 @@ button {
     padding-bottom: 56.25%; /* 16:9 aspect ratio */
 }
 
-.video-aspect iframe {
+.video-aspect iframe,
+.video-aspect > div {
     position: absolute;
     top: 0;
     left: 0;
