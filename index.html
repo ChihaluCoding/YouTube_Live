@@ -120,6 +120,11 @@
 
                 <div class="setting-section">
                     <h3>📺 登録チャンネル一覧</h3>
+                    <div class="channel-export-import">
+                        <button onclick="exportChannels()" class="btn-secondary" title="チャンネル設定をJSONファイルでエクスポート">📥 エクスポート</button>
+                        <button onclick="document.getElementById('importChannelsInput').click()" class="btn-secondary" title="チャンネル設定をJSONファイルからインポート">📤 インポート</button>
+                        <input type="file" id="importChannelsInput" accept=".json" class="hidden-file-input" title="チャンネル設定ファイルを選択" onchange="importChannels(event)">
+                    </div>
                     <div id="channelList" class="channel-list"></div>
                 </div>
             </div>

@@ -492,6 +492,20 @@ button {
     border-bottom: 2px solid #f0f0f0;
 }
 
+.channel-export-import {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.channel-export-import button {
+    flex: 1;
+}
+
+.hidden-file-input {
+    display: none;
+}
+
 .channel-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

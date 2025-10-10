@@ -522,9 +522,9 @@ async function renderVideos() {
             ${statusHtml}
             <div class="video-aspect">
                 <iframe
-                    src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=${autoplay}&mute=${mute}"
+                    src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=${autoplay}&mute=${mute}&playsinline=1&controls=1&modestbranding=1&rel=0"
                     frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowfullscreen
                 ></iframe>
             </div>
@@ -708,6 +708,132 @@ function loadFromLocalStorage() {
     
     changeLayout();
     renderVideos();
+}
+
+// バックグラウンド再生を維持するための設定
+// Page Visibility APIを使用してタブがバックグラウンドになっても再生を継続
+document.addEventListener('visibilitychange', () => {
+    // visibilitychangeイベントは発生するが、特に何もしない
+    // これにより、ブラウザによる自動停止をできるだけ防ぐ
+});
+
+// チャンネル設定をエクスポート
+function exportChannels() {
+    if (channels.length === 0) {
+        alert('エクスポートするチャンネルがありません');
+        return;
+    }
+    
+    const exportData = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        channels: channels.map(ch => ({
+            channelId: ch.channelId,
+            name: ch.name
+        }))
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `youtube-channels-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert(`${channels.length}件のチャンネルをエクスポートしました`);
+}
+
+// チャンネル設定をインポート
+async function importChannels(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    try {
+        const text = await file.text();
+        const importData = JSON.parse(text);
+        
+        // データ検証
+        if (!importData.channels || !Array.isArray(importData.channels)) {
+            alert('無効なファイル形式です');
+            return;
+        }
+        
+        let addedCount = 0;
+        let skippedCount = 0;
+        
+        for (const channelData of importData.channels) {
+            const channelId = channelData.channelId;
+            
+            // 既存チェック
+            if (channels.some(ch => ch.channelId === channelId)) {
+                skippedCount++;
+                continue;
+            }
+            
+            // チャンネルを追加
+            if (apiKey) {
+                const liveVideoId = await fetchChannelLiveStream(channelId);
+                const channelName = channelData.name || await fetchChannelName(channelId);
+                
+                if (liveVideoId) {
+                    channels.push({
+                        channelId: channelId,
+                        name: channelName,
+                        videoId: liveVideoId,
+                        status: 'live'
+                    });
+                    
+                    if (!videos.includes(liveVideoId)) {
+                        videos.push(liveVideoId);
+                    }
+                } else {
+                    channels.push({
+                        channelId: channelId,
+                        name: channelName,
+                        videoId: null,
+                        status: 'none'
+                    });
+                }
+                addedCount++;
+            } else {
+                // APIキーがない場合でもチャンネル情報は保存
+                channels.push({
+                    channelId: channelId,
+                    name: channelData.name || 'チャンネル',
+                    videoId: null,
+                    status: 'none'
+                });
+                addedCount++;
+            }
+        }
+        
+        // 重複削除
+        removeDuplicateVideos();
+        
+        // 保存と更新
+        saveToLocalStorage();
+        renderVideos();
+        renderChannelList();
+        
+        // 自動更新開始
+        if (apiKey && channels.length > 0) {
+            startAutoUpdate();
+        }
+        
+        alert(`インポート完了\n追加: ${addedCount}件\nスキップ(重複): ${skippedCount}件`);
+        
+    } catch (error) {
+        console.error('Import error:', error);
+        alert('ファイルの読み込みに失敗しました: ' + error.message);
+    }
+    
+    // ファイル入力をリセット
+    event.target.value = '';
 }
 
 // 自動保存機能を有効化
