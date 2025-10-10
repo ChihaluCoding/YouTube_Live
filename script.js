@@ -361,36 +361,6 @@ async function updateAllChannels() {
     }
 }
 
-// 手動で全チャンネルを更新（ボタン用）
-async function manualUpdateAllChannels() {
-    if (channels.length === 0) {
-        alert('登録されているチャンネルがありません');
-        return;
-    }
-    
-    if (!apiKey) {
-        alert('YouTube Data APIキーが設定されていません。設定画面でAPIキーを入力してください。');
-        return;
-    }
-    
-    // 更新中の表示
-    const button = event.target;
-    const originalText = button.textContent;
-    button.textContent = '🔄 更新中...';
-    button.disabled = true;
-    
-    try {
-        await updateAllChannels();
-        alert('全てのチャンネルを更新しました');
-    } catch (error) {
-        console.error('更新エラー:', error);
-        alert('更新中にエラーが発生しました');
-    } finally {
-        button.textContent = originalText;
-        button.disabled = false;
-    }
-}
-
 // 重複した動画IDを削除する関数
 function removeDuplicateVideos() {
     // まず、videos配列の重複を削除（Setを使用）

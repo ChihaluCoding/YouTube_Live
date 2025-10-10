@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 3,
+            "activePatchIndex": 4,
             "patches": [
                 {
                     "date": 1760073332779,
@@ -20,6 +20,10 @@
                 {
                     "date": 1760080642172,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -360,8 +360,38 @@\n         renderVideos();\r\n     }\r\n }\r\n \r\n+// 手動で全チャンネルを更新（ボタン用）\r\n+async function manualUpdateAllChannels() {\r\n+    if (channels.length === 0) {\r\n+        alert('登録されているチャンネルがありません');\r\n+        return;\r\n+    }\r\n+    \r\n+    if (!apiKey) {\r\n+        alert('YouTube Data APIキーが設定されていません。設定画面でAPIキーを入力してください。');\r\n+        return;\r\n+    }\r\n+    \r\n+    // 更新中の表示\r\n+    const button = event.target;\r\n+    const originalText = button.textContent;\r\n+    button.textContent = '🔄 更新中...';\r\n+    button.disabled = true;\r\n+    \r\n+    try {\r\n+        await updateAllChannels();\r\n+        alert('全てのチャンネルを更新しました');\r\n+    } catch (error) {\r\n+        console.error('更新エラー:', error);\r\n+        alert('更新中にエラーが発生しました');\r\n+    } finally {\r\n+        button.textContent = originalText;\r\n+        button.disabled = false;\r\n+    }\r\n+}\r\n+\r\n // 重複した動画IDを削除する関数\r\n function removeDuplicateVideos() {\r\n     // まず、videos配列の重複を削除（Setを使用）\r\n     const uniqueVideos = [...new Set(videos)];\r\n"
+                },
+                {
+                    "date": 1760081317717,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -360,38 +360,8 @@\n         renderVideos();\r\n     }\r\n }\r\n \r\n-// 手動で全チャンネルを更新（ボタン用）\r\n-async function manualUpdateAllChannels() {\r\n-    if (channels.length === 0) {\r\n-        alert('登録されているチャンネルがありません');\r\n-        return;\r\n-    }\r\n-    \r\n-    if (!apiKey) {\r\n-        alert('YouTube Data APIキーが設定されていません。設定画面でAPIキーを入力してください。');\r\n-        return;\r\n-    }\r\n-    \r\n-    // 更新中の表示\r\n-    const button = event.target;\r\n-    const originalText = button.textContent;\r\n-    button.textContent = '🔄 更新中...';\r\n-    button.disabled = true;\r\n-    \r\n-    try {\r\n-        await updateAllChannels();\r\n-        alert('全てのチャンネルを更新しました');\r\n-    } catch (error) {\r\n-        console.error('更新エラー:', error);\r\n-        alert('更新中にエラーが発生しました');\r\n-    } finally {\r\n-        button.textContent = originalText;\r\n-        button.disabled = false;\r\n-    }\r\n-}\r\n-\r\n // 重複した動画IDを削除する関数\r\n function removeDuplicateVideos() {\r\n     // まず、videos配列の重複を削除（Setを使用）\r\n     const uniqueVideos = [...new Set(videos)];\r\n"
                 }
             ],
             "date": 1760073332779,

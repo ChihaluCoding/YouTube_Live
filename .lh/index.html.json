@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 1,
+            "activePatchIndex": 2,
             "patches": [
                 {
                     "date": 1760073329993,
@@ -12,6 +12,10 @@
                 {
                     "date": 1760080642091,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -22,8 +22,9 @@\n \r\n             <div class=\"input-group\">\r\n                 <input type=\"text\" id=\"channelInput\" placeholder=\"Channel IDを入力（自動でライブを検出）\">\r\n                 <button onclick=\"addChannel()\" class=\"btn-primary\">チャンネル追加</button>\r\n+                <button onclick=\"manualUpdateAllChannels()\" class=\"btn-secondary\" title=\"全てのチャンネルのライブ配信を今すぐ更新\">🔄 配信を更新</button>\r\n             </div>\r\n             \r\n             <div class=\"layout-controls\">\r\n                 <label>レイアウト:</label>\r\n"
+                },
+                {
+                    "date": 1760081317680,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -22,9 +22,9 @@\n \r\n             <div class=\"input-group\">\r\n                 <input type=\"text\" id=\"channelInput\" placeholder=\"Channel IDを入力（自動でライブを検出）\">\r\n                 <button onclick=\"addChannel()\" class=\"btn-primary\">チャンネル追加</button>\r\n-                <button onclick=\"manualUpdateAllChannels()\" class=\"btn-secondary\" title=\"全てのチャンネルのライブ配信を今すぐ更新\">🔄 配信を更新</button>\r\n+                <button onclick=\"location.reload()\" class=\"btn-secondary\" title=\"ページをリロードして配信を最新の状態にします\">🔄 リロード</button>\r\n             </div>\r\n             \r\n             <div class=\"layout-controls\">\r\n                 <label>レイアウト:</label>\r\n"
                 }
             ],
             "date": 1760073329993,
