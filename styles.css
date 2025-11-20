@@ -57,10 +57,66 @@ header p {
 
 .controls {
     background: white;
-    padding: 20px;
-    border-radius: 10px;
+    border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     margin-bottom: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.controls-header {
+    border-bottom: 1px solid #f0f0f0;
+    background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1));
+}
+
+.controls-toggle {
+    width: 100%;
+    padding: 16px 20px;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+}
+
+.controls-toggle:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: -4px;
+}
+
+.controls-toggle-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(102, 126, 234, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #4c51bf;
+    font-size: 0.9rem;
+    transition: transform 0.2s ease;
+}
+
+.controls-toggle-icon::before {
+    content: '⌃';
+    transform: rotate(0deg);
+    transition: transform 0.2s ease;
+}
+
+.controls.collapsed .controls-toggle-icon::before {
+    transform: rotate(-90deg);
+}
+
+.controls-body {
+    padding: 20px;
+}
+
+.controls.collapsed .controls-body {
+    display: none;
 }
 
 .api-key-section {
@@ -484,19 +540,70 @@ button:disabled {
 }
 
 .setting-section {
-    margin-bottom: 30px;
+    margin-bottom: 20px;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
 }
 
 .setting-section:last-child {
     margin-bottom: 0;
 }
 
-.setting-section h3 {
+.setting-section-header {
+    width: 100%;
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 600;
     color: #333;
-    font-size: 1.2rem;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #f0f0f0;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.setting-section-header:hover,
+.setting-section-header:focus-visible {
+    background: rgba(102, 126, 234, 0.08);
+    color: #4c51bf;
+    outline: none;
+}
+
+.setting-section-content {
+    padding: 5px 20px 20px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.setting-section.collapsed .setting-section-content {
+    display: none;
+}
+
+.section-toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(102, 126, 234, 0.1);
+    color: #4c51bf;
+    font-size: 0.9rem;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.section-toggle-icon::before {
+    content: '⌃';
+    transform: rotate(0deg);
+    transition: transform 0.2s ease;
+}
+
+.setting-section.collapsed .section-toggle-icon::before {
+    transform: rotate(-90deg);
 }
 
 .channel-export-import {

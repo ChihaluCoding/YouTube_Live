@@ -14,6 +14,9 @@ let players = {}; // YouTube Player オブジェクトを管理
 
 const SCROLL_POSITION_KEY = 'scrollPosition'; // localStorage key for scroll position
 let pendingScrollPosition = null; // scroll position to restore after reload
+const SETTINGS_SECTION_STATE_KEY = 'settingsSectionState'; // 設定モーダルの折り畳み状態
+let sectionCollapseState = {};
+const CONTROLS_PANEL_STATE_KEY = 'controlsPanelCollapsed';
 
 // YouTube IFrame APIを読み込む
 const tag = document.createElement('script');
@@ -785,6 +788,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    initializeSettingSections();
+    initializeControlsPanel();
+    
     // 初期表示はloadFromLocalStorage内のchangeLayout()で実行されるため不要
 });
 
@@ -817,6 +823,94 @@ function restoreScrollPositionIfNeeded() {
     requestAnimationFrame(() => {
         window.scrollTo(0, positionToRestore);
     });
+}
+
+function loadSettingSectionStateFromStorage() {
+    try {
+        const raw = localStorage.getItem(SETTINGS_SECTION_STATE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                sectionCollapseState = parsed;
+            } else {
+                sectionCollapseState = {};
+            }
+        } else {
+            sectionCollapseState = {};
+        }
+    } catch (error) {
+        console.error('設定セクション状態の読み込みに失敗しました:', error);
+        sectionCollapseState = {};
+    }
+}
+
+function updateSettingSectionState(sectionId, isCollapsed) {
+    if (!sectionId) return;
+    
+    if (isCollapsed) {
+        sectionCollapseState[sectionId] = true;
+    } else {
+        delete sectionCollapseState[sectionId];
+    }
+    
+    try {
+        localStorage.setItem(SETTINGS_SECTION_STATE_KEY, JSON.stringify(sectionCollapseState));
+    } catch (error) {
+        console.error('設定セクション状態の保存に失敗しました:', error);
+    }
+}
+
+function toggleSettingSection(section, header, sectionId) {
+    if (!section || !header) return;
+    
+    const willCollapse = !section.classList.contains('collapsed');
+    section.classList.toggle('collapsed', willCollapse);
+    header.setAttribute('aria-expanded', (!willCollapse).toString());
+    updateSettingSectionState(sectionId, willCollapse);
+}
+
+function initializeSettingSections() {
+    const sections = document.querySelectorAll('.setting-section');
+    if (sections.length === 0) return;
+    
+    loadSettingSectionStateFromStorage();
+    
+    sections.forEach(section => {
+        const sectionId = section.dataset.section;
+        const header = section.querySelector('.setting-section-header');
+        if (!sectionId || !header) return;
+        
+        const isCollapsed = sectionCollapseState[sectionId] === true;
+        section.classList.toggle('collapsed', isCollapsed);
+        header.setAttribute('aria-expanded', (!isCollapsed).toString());
+        
+        header.addEventListener('click', () => {
+            toggleSettingSection(section, header, sectionId);
+        });
+    });
+}
+
+function initializeControlsPanel() {
+    const controls = document.querySelector('.controls[data-collapsible="controls"]');
+    if (!controls) return;
+    
+    const toggleButton = controls.querySelector('.controls-toggle');
+    if (!toggleButton) return;
+    
+    const savedState = localStorage.getItem(CONTROLS_PANEL_STATE_KEY);
+    const isCollapsed = savedState === 'true';
+    applyControlsPanelState(isCollapsed);
+    
+    toggleButton.addEventListener('click', () => {
+        const nextState = !controls.classList.contains('collapsed');
+        applyControlsPanelState(nextState);
+        localStorage.setItem(CONTROLS_PANEL_STATE_KEY, nextState ? 'true' : 'false');
+    });
+    
+    function applyControlsPanelState(collapsed) {
+        controls.classList.toggle('collapsed', collapsed);
+        toggleButton.setAttribute('aria-expanded', (!collapsed).toString());
+    }
 }
 
 function loadFromLocalStorage() {
