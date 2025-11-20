@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 8,
+            "activePatchIndex": 9,
             "patches": [
                 {
                     "date": 1760073332779,
@@ -40,6 +40,10 @@
                 {
                     "date": 1760083710048,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -761,10 +761,9 @@\n             closeSettings();\r\n         }\r\n     });\r\n     \r\n-    // 初期表示\r\n-    renderVideos();\r\n+    // 初期表示はloadFromLocalStorage内のchangeLayout()で実行されるため不要\r\n });\r\n \r\n // ローカルストレージに保存（オプション機能）\r\n function saveToLocalStorage() {\r\n"
+                },
+                {
+                    "date": 1760095090306,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -281,22 +281,37 @@\n         \r\n         if (data.items && data.items.length > 0) {\r\n             const video = data.items[0];\r\n             const snippet = video.snippet;\r\n+            const liveDetails = video.liveStreamingDetails;\r\n             \r\n+            console.log(`ステータス取得: ${videoId} - liveBroadcastContent: ${snippet.liveBroadcastContent}`);\r\n+            \r\n             if (snippet.liveBroadcastContent === 'live') {\r\n                 return { status: 'live', title: snippet.title };\r\n             } else if (snippet.liveBroadcastContent === 'upcoming') {\r\n                 return { status: 'upcoming', title: snippet.title };\r\n+            } else if (snippet.liveBroadcastContent === 'none') {\r\n+                // 'none'の場合、actualEndTimeがある場合のみ終了と判定\r\n+                if (liveDetails && liveDetails.actualEndTime) {\r\n+                    return { status: 'ended', title: snippet.title };\r\n+                } else {\r\n+                    // 終了時刻が記録されていない場合は不明として扱う（削除しない）\r\n+                    console.warn(`動画 ${videoId} は liveBroadcastContent='none' だが actualEndTime がありません`);\r\n+                    return { status: 'unknown', title: snippet.title };\r\n+                }\r\n             } else {\r\n                 return { status: 'ended', title: snippet.title };\r\n             }\r\n         }\r\n         \r\n+        // 動画が見つからない場合（削除された等）\r\n+        console.warn(`動画 ${videoId} が見つかりませんでした`);\r\n         return { status: 'unknown', title: '' };\r\n     } catch (error) {\r\n         console.error('Error getting video status:', error);\r\n-        return { status: 'error', title: '' };\r\n+        // エラー時は不明として扱う（削除しない）\r\n+        return { status: 'unknown', title: '' };\r\n     }\r\n }\r\n \r\n // 全チャンネルを更新\r\n@@ -341,17 +356,19 @@\n             \r\n             if (apiKey && channelInfo) {\r\n                 const videoStatus = await getVideoStatus(videoId);\r\n                 \r\n-                // 終了した配信を削除\r\n+                // 明確に終了した配信のみ削除（unknownやerrorは削除しない）\r\n                 if (videoStatus.status === 'ended') {\r\n                     console.log(`配信が終了したため削除: ${videoId} - ${videoStatus.title}`);\r\n                     videos.splice(i, 1);\r\n                     \r\n                     // チャンネル情報も更新\r\n                     channelInfo.videoId = null;\r\n                     channelInfo.status = 'none';\r\n                     hasChanges = true;\r\n+                } else if (videoStatus.status === 'unknown') {\r\n+                    console.warn(`配信 ${videoId} のステータスが不明のため、削除をスキップしました`);\r\n                 }\r\n             }\r\n         }\r\n     }\r\n"
                 }
             ],
             "date": 1760073332779,

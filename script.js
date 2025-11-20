@@ -12,6 +12,9 @@ let showStatusBadge = true;
 let autoRemoveEnded = true; // 終了した配信を自動削除
 let players = {}; // YouTube Player オブジェクトを管理
 
+const SCROLL_POSITION_KEY = 'scrollPosition'; // localStorage key for scroll position
+let pendingScrollPosition = null; // scroll position to restore after reload
+
 // YouTube IFrame APIを読み込む
 const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
@@ -558,6 +561,7 @@ async function renderVideos() {
             </div>
         `;
         console.log('renderVideos完了 - 動画なし');
+        restoreScrollPositionIfNeeded();
         return;
     }
     
@@ -657,6 +661,8 @@ async function renderVideos() {
             `;
         }
     }
+
+    restoreScrollPositionIfNeeded();
 }
 
 // タブがアクティブになった時にライブ配信を最新位置にシーク
@@ -793,6 +799,26 @@ function saveToLocalStorage() {
     localStorage.setItem('gridColumns', gridColumns);
 }
 
+
+function storeScrollPosition() {
+    const currentScroll = window.scrollY ?? document.documentElement.scrollTop ?? document.body.scrollTop ?? 0;
+    const normalizedScroll = Math.max(0, Math.round(currentScroll));
+    localStorage.setItem(SCROLL_POSITION_KEY, normalizedScroll.toString());
+}
+
+function restoreScrollPositionIfNeeded() {
+    if (pendingScrollPosition === null) {
+        return;
+    }
+    
+    const positionToRestore = pendingScrollPosition;
+    pendingScrollPosition = null;
+    
+    requestAnimationFrame(() => {
+        window.scrollTo(0, positionToRestore);
+    });
+}
+
 function loadFromLocalStorage() {
     const savedVideos = localStorage.getItem('youtubeVideos');
     const savedChannels = localStorage.getItem('youtubeChannels');
@@ -804,6 +830,7 @@ function loadFromLocalStorage() {
     const savedAutoMute = localStorage.getItem('autoMuteEnabled');
     const savedShowStatus = localStorage.getItem('showStatusBadge');
     const savedAutoRemoveEnded = localStorage.getItem('autoRemoveEnded');
+    const savedScrollPosition = localStorage.getItem(SCROLL_POSITION_KEY);
     
     if (savedVideos) {
         videos = JSON.parse(savedVideos);
@@ -845,6 +872,17 @@ function loadFromLocalStorage() {
     
     if (savedAutoRemoveEnded !== null) {
         autoRemoveEnded = savedAutoRemoveEnded === 'true';
+    }
+    
+    if (savedScrollPosition !== null) {
+        const parsedScroll = parseInt(savedScrollPosition, 10);
+        if (!isNaN(parsedScroll)) {
+            pendingScrollPosition = parsedScroll;
+        } else {
+            pendingScrollPosition = null;
+        }
+    } else {
+        pendingScrollPosition = null;
     }
     
     // 読み込み後に重複チェック
@@ -994,5 +1032,9 @@ async function importChannels(event) {
 }
 
 // 自動保存機能を有効化
-window.addEventListener('beforeunload', saveToLocalStorage);
+window.addEventListener('beforeunload', () => {
+    storeScrollPosition();
+    saveToLocalStorage();
+});
+
 window.addEventListener('load', loadFromLocalStorage);
