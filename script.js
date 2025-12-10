@@ -18,6 +18,47 @@ const SETTINGS_SECTION_STATE_KEY = 'settingsSectionState'; // 設定モーダル
 let sectionCollapseState = {};
 const CONTROLS_PANEL_STATE_KEY = 'controlsPanelCollapsed';
 
+function normalizeKeywordFilter(filterText) {
+    if (!filterText) return [];
+    return filterText
+        .split(/[,、\s]+/)
+        .map(keyword => keyword.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+function titleMatchesKeywords(title, keywordList) {
+    if (!keywordList || keywordList.length === 0) {
+        return true;
+    }
+    const normalizedTitle = (title || '').toLowerCase();
+    return keywordList.some(keyword => normalizedTitle.includes(keyword));
+}
+
+function findMatchingVideoByKeyword(items, keywordList) {
+    if (!items || items.length === 0) {
+        return null;
+    }
+    for (const item of items) {
+        const snippetTitle = (item && item.snippet && item.snippet.title) ? item.snippet.title : '';
+        if (titleMatchesKeywords(snippetTitle, keywordList)) {
+            return item;
+        }
+    }
+    return null;
+}
+
+function escapeHtml(value) {
+    if (value === undefined || value === null) {
+        return '';
+    }
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 // YouTube IFrame APIを読み込む
 const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
@@ -160,6 +201,8 @@ function saveApiKey() {
 async function addChannel() {
     const input = document.getElementById('channelInput');
     const channelId = input.value.trim();
+    const keywordInput = document.getElementById('channelKeywordInput');
+    const keywordFilter = keywordInput ? keywordInput.value.trim() : '';
     
     if (!apiKey) {
         alert('先にYouTube Data APIキーを保存してください');
@@ -178,7 +221,7 @@ async function addChannel() {
     }
     
     // チャンネルのライブ配信を検索
-    const liveVideoId = await fetchChannelLiveStream(channelId);
+    const liveVideoId = await fetchChannelLiveStream(channelId, keywordFilter);
     
     // チャンネル名を取得
     const channelName = await fetchChannelName(channelId);
@@ -195,7 +238,8 @@ async function addChannel() {
             channelId: channelId,
             name: channelName,
             videoId: liveVideoId,
-            status: 'live'
+            status: 'live',
+            keywordFilter: keywordFilter
         });
         
         videos.push(liveVideoId);
@@ -205,12 +249,16 @@ async function addChannel() {
             channelId: channelId,
             name: channelName,
             videoId: null,
-            status: 'none'
+            status: 'none',
+            keywordFilter: keywordFilter
         });
         alert('現在このチャンネルでライブ配信は行われていません。定期的にチェックします。');
     }
     
     input.value = '';
+    if (keywordInput) {
+        keywordInput.value = '';
+    }
     
     // 重複チェック
     removeDuplicateVideos();
@@ -222,10 +270,11 @@ async function addChannel() {
 }
 
 // チャンネルのライブ配信を取得
-async function fetchChannelLiveStream(channelId) {
+async function fetchChannelLiveStream(channelId, keywordFilter = '') {
     try {
+        const keywords = normalizeKeywordFilter(keywordFilter);
         // まず、チャンネルの配信中のライブを検索
-        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&key=${apiKey}`;
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&maxResults=10&key=${apiKey}`;
         
         const response = await fetch(searchUrl);
         const data = await response.json();
@@ -236,18 +285,20 @@ async function fetchChannelLiveStream(channelId) {
             return null;
         }
         
-        if (data.items && data.items.length > 0) {
-            return data.items[0].id.videoId;
+        const liveMatch = findMatchingVideoByKeyword(data.items, keywords);
+        if (liveMatch) {
+            return liveMatch.id.videoId;
         }
         
         // ライブ配信がない場合、予定されているライブを検索
-        const upcomingUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=upcoming&type=video&order=date&maxResults=1&key=${apiKey}`;
+        const upcomingUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=upcoming&type=video&order=date&maxResults=10&key=${apiKey}`;
         
         const upcomingResponse = await fetch(upcomingUrl);
         const upcomingData = await upcomingResponse.json();
         
-        if (upcomingData.items && upcomingData.items.length > 0) {
-            return upcomingData.items[0].id.videoId;
+        const upcomingMatch = findMatchingVideoByKeyword(upcomingData.items, keywords);
+        if (upcomingMatch) {
+            return upcomingMatch.id.videoId;
         }
         
         return null;
@@ -325,7 +376,7 @@ async function updateAllChannels() {
     let hasChanges = false;
     
     for (let channel of channels) {
-        const liveVideoId = await fetchChannelLiveStream(channel.channelId);
+        const liveVideoId = await fetchChannelLiveStream(channel.channelId, channel.keywordFilter || '');
         
         if (liveVideoId && liveVideoId !== channel.videoId) {
             // 新しいライブ配信が見つかった
@@ -705,21 +756,62 @@ function renderChannelList() {
     channels.forEach(channel => {
         const channelItem = document.createElement('div');
         channelItem.className = 'channel-item';
-        
+
         let statusText = '待機中';
         if (channel.videoId) {
             statusText = `📺 現在の配信: ${channel.videoId}`;
         }
-        
+        const keywordDisplay = channel.keywordFilter ? channel.keywordFilter : '指定なし';
+        const keywordValueAttr = escapeHtml(channel.keywordFilter || '');
+
         channelItem.innerHTML = `
             <button class="channel-remove-btn" onclick="removeChannel('${channel.channelId}')" title="削除">×</button>
             <div class="channel-name">${channel.name || 'チャンネル'}</div>
             <div class="channel-id">ID: ${channel.channelId}</div>
             <div class="channel-status">${statusText}</div>
+            <div class="channel-keyword-note">タイトルキーワード: ${escapeHtml(keywordDisplay)}</div>
+            <div class="channel-keyword-control">
+                <span>カンマ区切りで複数指定できます</span>
+                <input type="text" class="channel-keyword-input" value="${keywordValueAttr}" placeholder="例: 歌, ASMR" onchange="updateChannelKeyword('${channel.channelId}', this.value)">
+            </div>
         `;
-        
+
         channelListContainer.appendChild(channelItem);
     });
+}
+
+async function updateChannelKeyword(channelId, newKeywordValue) {
+    const channel = channels.find(ch => ch.channelId === channelId);
+    if (!channel) {
+        return;
+    }
+    channel.keywordFilter = (newKeywordValue || '').trim();
+
+    if (apiKey) {
+        try {
+            const liveVideoId = await fetchChannelLiveStream(channel.channelId, channel.keywordFilter);
+            if (liveVideoId && liveVideoId !== channel.videoId) {
+                if (channel.videoId) {
+                    videos = videos.filter(id => id !== channel.videoId);
+                }
+                channel.videoId = liveVideoId;
+                channel.status = 'live';
+                if (!videos.includes(liveVideoId)) {
+                    videos.push(liveVideoId);
+                }
+            } else if (!liveVideoId && channel.videoId) {
+                videos = videos.filter(id => id !== channel.videoId);
+                channel.videoId = null;
+                channel.status = 'none';
+            }
+        } catch (error) {
+            console.error('キーワード更新時のライブ取得に失敗しました:', error);
+        }
+    }
+
+    saveToLocalStorage();
+    renderVideos();
+    renderChannelList();
 }
 
 // チャンネルを削除する関数
@@ -932,6 +1024,11 @@ function loadFromLocalStorage() {
     
     if (savedChannels) {
         channels = JSON.parse(savedChannels);
+        channels.forEach(channel => {
+            if (channel.keywordFilter === undefined || channel.keywordFilter === null) {
+                channel.keywordFilter = '';
+            }
+        });
     }
     
     if (savedLayout) {
@@ -1018,7 +1115,8 @@ function exportChannels() {
         exportDate: new Date().toISOString(),
         channels: channels.map(ch => ({
             channelId: ch.channelId,
-            name: ch.name
+            name: ch.name,
+            keywordFilter: ch.keywordFilter || ''
         }))
     };
     
@@ -1057,7 +1155,8 @@ async function importChannels(event) {
         
         for (const channelData of importData.channels) {
             const channelId = channelData.channelId;
-            
+            const keywordFilter = (channelData.keywordFilter || '').trim();
+
             // 既存チェック
             if (channels.some(ch => ch.channelId === channelId)) {
                 skippedCount++;
@@ -1066,17 +1165,18 @@ async function importChannels(event) {
             
             // チャンネルを追加
             if (apiKey) {
-                const liveVideoId = await fetchChannelLiveStream(channelId);
+                const liveVideoId = await fetchChannelLiveStream(channelId, keywordFilter);
                 const channelName = channelData.name || await fetchChannelName(channelId);
-                
+
                 if (liveVideoId) {
                     channels.push({
                         channelId: channelId,
                         name: channelName,
                         videoId: liveVideoId,
-                        status: 'live'
+                        status: 'live',
+                        keywordFilter: keywordFilter
                     });
-                    
+
                     if (!videos.includes(liveVideoId)) {
                         videos.push(liveVideoId);
                     }
@@ -1085,7 +1185,8 @@ async function importChannels(event) {
                         channelId: channelId,
                         name: channelName,
                         videoId: null,
-                        status: 'none'
+                        status: 'none',
+                        keywordFilter: keywordFilter
                     });
                 }
                 addedCount++;
@@ -1095,7 +1196,8 @@ async function importChannels(event) {
                     channelId: channelId,
                     name: channelData.name || 'チャンネル',
                     videoId: null,
-                    status: 'none'
+                    status: 'none',
+                    keywordFilter: keywordFilter
                 });
                 addedCount++;
             }

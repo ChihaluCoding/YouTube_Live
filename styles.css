@@ -157,6 +157,36 @@ header p {
     margin-bottom: 15px;
 }
 
+.keyword-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 15px;
+}
+
+.keyword-filter label {
+    font-weight: 600;
+    color: #333;
+}
+
+.keyword-filter input {
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.keyword-filter input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.keyword-filter small {
+    color: #666;
+    font-size: 0.85rem;
+}
+
 #videoInput {
     flex: 1;
     padding: 12px 15px;
@@ -669,6 +699,40 @@ button:disabled {
     border-radius: 4px;
     display: inline-block;
     margin-top: 3px;
+}
+
+.channel-keyword-note {
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+.channel-keyword-control {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.channel-keyword-control span {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.channel-keyword-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.15);
+    color: white;
+    font-size: 0.85rem;
+}
+
+.channel-keyword-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.channel-keyword-input:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
 }
 
 .channel-remove-btn {

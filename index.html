@@ -31,6 +31,12 @@
                     <button onclick="location.reload()" class="btn-secondary" title="ページをリロードして動画リストを最新の状態にします">🔄 リロード</button>
                 </div>
                 
+                <div class="keyword-filter">
+                    <label for="channelKeywordInput">タイトルキーワード（任意）</label>
+                    <input type="text" id="channelKeywordInput" placeholder="例: 歌枠, ASMR（カンマ区切りで複数指定可）">
+                    <small>設定すると指定したキーワードをタイトルに含むライブのみ自動取得します</small>
+                </div>
+
                 <div class="layout-controls">
                     <label>レイアウト:</label>
                     <select id="layoutSelect" title="レイアウト選択" onchange="changeLayout()">
