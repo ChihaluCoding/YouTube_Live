@@ -12,6 +12,7 @@ let showStatusBadge = true;
 let autoRemoveEnded = true; // 終了した配信を自動削除
 let showOnlyRegisteredChannels = true; // 登録チャンネル由来のみ表示
 let players = {}; // YouTube Player オブジェクトを管理
+let videoChannelMap = {}; // videoId -> channelId のキャッシュ
 
 const SCROLL_POSITION_KEY = 'scrollPosition'; // localStorage key for scroll position
 let pendingScrollPosition = null; // scroll position to restore after reload
@@ -376,6 +377,44 @@ async function getVideoStatus(videoId) {
     }
 }
 
+async function fetchVideoChannelIds(videoIds) {
+    if (!apiKey || !videoIds || videoIds.length === 0) {
+        return;
+    }
+
+    const batchSize = 50;
+    for (let i = 0; i < videoIds.length; i += batchSize) {
+        const batch = videoIds.slice(i, i + batchSize);
+        try {
+            const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${batch.join(',')}&key=${apiKey}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.error) {
+                console.error('API Error (video channel lookup):', data.error);
+                continue;
+            }
+
+            const foundIds = new Set();
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(item => {
+                    const channelId = item && item.snippet ? item.snippet.channelId : null;
+                    videoChannelMap[item.id] = channelId || null;
+                    foundIds.add(item.id);
+                });
+            }
+
+            batch.forEach(videoId => {
+                if (!foundIds.has(videoId) && !Object.prototype.hasOwnProperty.call(videoChannelMap, videoId)) {
+                    videoChannelMap[videoId] = null;
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching video channel ids:', error);
+        }
+    }
+}
+
 // 全チャンネルを更新
 async function updateAllChannels() {
     let hasChanges = false;
@@ -596,6 +635,22 @@ async function renderVideos() {
     
     // レンダリング前に重複チェックを実行
     removeDuplicateVideos();
+
+    const registeredChannelIds = new Set(
+        channels.map(channel => channel.channelId).filter(Boolean)
+    );
+    const channelVideoIds = new Set(
+        channels.map(channel => channel.videoId).filter(Boolean)
+    );
+
+    if (showOnlyRegisteredChannels && apiKey && videos.length > 0) {
+        const unknownIds = videos.filter(
+            videoId => !Object.prototype.hasOwnProperty.call(videoChannelMap, videoId)
+        );
+        if (unknownIds.length > 0) {
+            await fetchVideoChannelIds(unknownIds);
+        }
+    }
     
     // 既存のプレイヤーを全てクリア
     const playerKeys = Object.keys(players);
@@ -612,13 +667,10 @@ async function renderVideos() {
     });
     players = {}; // プレイヤーオブジェクトをリセット
     
-    const channelVideoIds = new Set(
-        channels
-            .map(channel => channel.videoId)
-            .filter(Boolean)
-    );
     const renderVideoIds = showOnlyRegisteredChannels
-        ? videos.filter(videoId => channelVideoIds.has(videoId))
+        ? (apiKey
+            ? videos.filter(videoId => registeredChannelIds.has(videoChannelMap[videoId]))
+            : videos.filter(videoId => channelVideoIds.has(videoId)))
         : videos;
 
     if (renderVideoIds.length === 0) {
