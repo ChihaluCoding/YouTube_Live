@@ -10,6 +10,7 @@ let autoplayEnabled = true;
 let autoMuteEnabled = true;
 let showStatusBadge = true;
 let autoRemoveEnded = true; // 終了した配信を自動削除
+let showOnlyRegisteredChannels = true; // 登録チャンネル由来のみ表示
 let players = {}; // YouTube Player オブジェクトを管理
 
 const SCROLL_POSITION_KEY = 'scrollPosition'; // localStorage key for scroll position
@@ -106,6 +107,7 @@ function openSettings() {
     document.getElementById('autoplayEnabled').checked = autoplayEnabled;
     document.getElementById('autoMuteEnabled').checked = autoMuteEnabled;
     document.getElementById('showStatusBadge').checked = showStatusBadge;
+    document.getElementById('showOnlyRegisteredChannels').checked = showOnlyRegisteredChannels;
     document.getElementById('autoRemoveEnded').checked = autoRemoveEnded;
     
     // チャンネルリストも表示
@@ -128,6 +130,7 @@ function saveSettings() {
     const newAutoplay = document.getElementById('autoplayEnabled').checked;
     const newAutoMute = document.getElementById('autoMuteEnabled').checked;
     const newShowStatus = document.getElementById('showStatusBadge').checked;
+    const newShowOnlyRegisteredChannels = document.getElementById('showOnlyRegisteredChannels').checked;
     const newAutoRemoveEnded = document.getElementById('autoRemoveEnded').checked;
     
     // APIキーが変更された場合
@@ -156,11 +159,13 @@ function saveSettings() {
     autoplayEnabled = newAutoplay;
     autoMuteEnabled = newAutoMute;
     showStatusBadge = newShowStatus;
+    showOnlyRegisteredChannels = newShowOnlyRegisteredChannels;
     autoRemoveEnded = newAutoRemoveEnded;
     
     localStorage.setItem('autoplayEnabled', autoplayEnabled);
     localStorage.setItem('autoMuteEnabled', autoMuteEnabled);
     localStorage.setItem('showStatusBadge', showStatusBadge);
+    localStorage.setItem('showOnlyRegisteredChannels', showOnlyRegisteredChannels);
     localStorage.setItem('autoRemoveEnded', autoRemoveEnded);
     
     // モーダルを閉じる
@@ -607,7 +612,27 @@ async function renderVideos() {
     });
     players = {}; // プレイヤーオブジェクトをリセット
     
-    if (videos.length === 0) {
+    const channelVideoIds = new Set(
+        channels
+            .map(channel => channel.videoId)
+            .filter(Boolean)
+    );
+    const renderVideoIds = showOnlyRegisteredChannels
+        ? videos.filter(videoId => channelVideoIds.has(videoId))
+        : videos;
+
+    if (renderVideoIds.length === 0) {
+        if (videos.length > 0 && showOnlyRegisteredChannels) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>登録チャンネルの動画がありません</h3>
+                    <p>チャンネルを追加するか、この設定をオフにしてください</p>
+                </div>
+            `;
+            console.log('renderVideos完了 - 登録チャンネル動画なし');
+            restoreScrollPositionIfNeeded();
+            return;
+        }
         container.innerHTML = `
             <div class="empty-state">
                 <h3>動画がありません</h3>
@@ -619,13 +644,13 @@ async function renderVideos() {
         return;
     }
     
-    console.log(`${videos.length}個の動画をレンダリング開始`);
+    console.log(`${renderVideoIds.length}個の動画をレンダリング開始`);
     container.innerHTML = '';
     
     // 各動画のステータスを取得して表示
-    for (let i = 0; i < videos.length; i++) {
-        const videoId = videos[i];
-        console.log(`動画レンダリング: ${i + 1}/${videos.length} - ${videoId}`);
+    for (let i = 0; i < renderVideoIds.length; i++) {
+        const videoId = renderVideoIds[i];
+        console.log(`動画レンダリング: ${i + 1}/${renderVideoIds.length} - ${videoId}`);
         const wrapper = document.createElement('div');
         wrapper.className = 'video-wrapper';
         
@@ -817,11 +842,11 @@ async function updateChannelKeyword(channelId, newKeywordValue) {
 // チャンネルを削除する関数
 function removeChannel(channelId) {
     if (confirm('このチャンネルを削除しますか?')) {
-        // チャンネルを配列から削除
-        channels = channels.filter(ch => ch.channelId !== channelId);
-        
-        // そのチャンネルから追加された動画も削除
+        // 削除対象のチャンネル情報を保持してから削除
         const channel = channels.find(ch => ch.channelId === channelId);
+        channels = channels.filter(ch => ch.channelId !== channelId);
+
+        // そのチャンネルから追加された動画も削除
         if (channel && channel.videoId) {
             videos = videos.filter(v => v !== channel.videoId);
         }
@@ -1015,6 +1040,7 @@ function loadFromLocalStorage() {
     const savedAutoplay = localStorage.getItem('autoplayEnabled');
     const savedAutoMute = localStorage.getItem('autoMuteEnabled');
     const savedShowStatus = localStorage.getItem('showStatusBadge');
+    const savedShowOnlyRegisteredChannels = localStorage.getItem('showOnlyRegisteredChannels');
     const savedAutoRemoveEnded = localStorage.getItem('autoRemoveEnded');
     const savedScrollPosition = localStorage.getItem(SCROLL_POSITION_KEY);
     
@@ -1061,6 +1087,10 @@ function loadFromLocalStorage() {
         showStatusBadge = savedShowStatus === 'true';
     }
     
+    if (savedShowOnlyRegisteredChannels !== null) {
+        showOnlyRegisteredChannels = savedShowOnlyRegisteredChannels === 'true';
+    }
+
     if (savedAutoRemoveEnded !== null) {
         autoRemoveEnded = savedAutoRemoveEnded === 'true';
     }
