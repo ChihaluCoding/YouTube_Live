@@ -756,12 +756,52 @@ async function renderVideos() {
     
     console.log(`${renderVideoIds.length}個の動画をレンダリング開始`);
     container.innerHTML = '';
-    let renderedCount = 0;
     
-    // 各動画のステータスを取得して表示
+    const renderEntries = [];
+    
+    // 各動画のステータスを取得してライブ/予定だけを抽出
     for (let i = 0; i < renderVideoIds.length; i++) {
         const videoId = renderVideoIds[i];
-        console.log(`動画レンダリング: ${i + 1}/${renderVideoIds.length} - ${videoId}`);
+        console.log(`動画レンダリング準備: ${i + 1}/${renderVideoIds.length} - ${videoId}`);
+        const channelInfo = channels.find(ch => ch.videoId === videoId);
+        let videoStatus = null;
+
+        if (apiKey) {
+            videoStatus = await getVideoStatus(videoId);
+            if (!videoStatus || (videoStatus.status !== 'live' && videoStatus.status !== 'upcoming')) {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        renderEntries.push({ videoId, channelInfo, videoStatus });
+    }
+
+    const orderedEntries = [
+        ...renderEntries.filter(entry => entry.videoStatus.status === 'live'),
+        ...renderEntries.filter(entry => entry.videoStatus.status === 'upcoming')
+    ];
+
+    if (orderedEntries.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>配信中・配信予定のライブがありません</h3>
+                <p>アーカイブは表示されません</p>
+            </div>
+        `;
+        console.log('renderVideos完了 - ライブ/予定なし');
+        restoreScrollPositionIfNeeded();
+        return;
+    }
+
+    // ライブ -> 予定 の順で表示
+    for (let i = 0; i < orderedEntries.length; i++) {
+        const entry = orderedEntries[i];
+        const videoId = entry.videoId;
+        const channelInfo = entry.channelInfo;
+        const videoStatus = entry.videoStatus;
+        console.log(`動画レンダリング: ${i + 1}/${orderedEntries.length} - ${videoId}`);
         const wrapper = document.createElement('div');
         wrapper.className = 'video-wrapper';
         
@@ -770,20 +810,8 @@ async function renderVideos() {
             wrapper.className += ' pip-secondary';
         }
         
-        // チャンネルから追加された動画かチェック
-        const channelInfo = channels.find(ch => ch.videoId === videoId);
         let statusHtml = '';
         
-        let videoStatus = null;
-
-        if (apiKey) {
-            videoStatus = await getVideoStatus(videoId);
-            if (!videoStatus || videoStatus.status !== 'live') {
-                continue;
-            }
-        }
-
-
         // ステータスバッジを表示する設定の場合のみ表示
         if (showStatusBadge && apiKey && channelInfo && videoStatus) {
             let statusClass = '';
@@ -791,13 +819,10 @@ async function renderVideos() {
             
             if (videoStatus.status === 'live') {
                 statusClass = 'status-live';
-                statusText = '🔴 配信中';
+                statusText = '?? 配信中';
             } else if (videoStatus.status === 'upcoming') {
                 statusClass = 'status-upcoming';
-                statusText = '🔔 予定';
-            } else if (videoStatus.status === 'ended') {
-                statusClass = 'status-ended';
-                statusText = '⏹️ 終了';
+                statusText = '?? 予定';
             }
             
             if (statusText) {
@@ -823,7 +848,6 @@ async function renderVideos() {
         `;
         
         container.appendChild(wrapper);
-        renderedCount++;
         
         // YouTube Player を初期化
         if (typeof YT !== 'undefined' && YT.Player) {
@@ -862,15 +886,7 @@ async function renderVideos() {
         }
     }
 
-    if (renderedCount === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <h3>配信中のライブがありません</h3>
-                <p>アーカイブは表示されません</p>
-            </div>
-        `;
-        console.log('renderVideos完了 - ライブ配信なし');
-        restoreScrollPositionIfNeeded();
+    restoreScrollPositionIfNeeded();
         return;
     }
 
