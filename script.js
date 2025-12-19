@@ -887,10 +887,6 @@ async function renderVideos() {
     }
 
     restoreScrollPositionIfNeeded();
-        return;
-    }
-
-    restoreScrollPositionIfNeeded();
 }
 
 // タブがアクティブになった時にライブ配信を最新位置にシーク
