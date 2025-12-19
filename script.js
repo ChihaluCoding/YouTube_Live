@@ -581,8 +581,39 @@ function stopAutoUpdate() {
     }
 }
 
+async function fetchVideoChannelId(videoId) {
+    if (!apiKey || !videoId) {
+        return null;
+    }
+    if (Object.prototype.hasOwnProperty.call(videoChannelMap, videoId)) {
+        return videoChannelMap[videoId];
+    }
+    try {
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error('API Error (single video channel lookup):', data.error);
+            return null;
+        }
+
+        if (data.items && data.items.length > 0) {
+            const channelId = data.items[0].snippet.channelId || null;
+            videoChannelMap[videoId] = channelId;
+            return channelId;
+        }
+
+        videoChannelMap[videoId] = null;
+        return null;
+    } catch (error) {
+        console.error('Error fetching video channel id:', error);
+        return null;
+    }
+}
+
 // 動画を追加する関数
-function addVideo() {
+async function addVideo() {
     const input = document.getElementById('videoInput');
     const videoId = extractVideoId(input.value.trim());
     
@@ -591,6 +622,26 @@ function addVideo() {
         return;
     }
     
+    if (!apiKey) {
+        alert('動画追加時に登録チャンネルの判定を行うため、先にYouTube Data APIキーを設定してください');
+        return;
+    }
+
+    if (channels.length === 0) {
+        alert('登録チャンネルがありません。先にチャンネルを追加してください');
+        return;
+    }
+
+    const registeredChannelIds = new Set(
+        channels.map(channel => channel.channelId).filter(Boolean)
+    );
+    const videoChannelId = await fetchVideoChannelId(videoId);
+
+    if (!videoChannelId || !registeredChannelIds.has(videoChannelId)) {
+        alert('登録済みチャンネルの動画ではないため追加できません');
+        return;
+    }
+
     // 重複チェック
     if (videos.includes(videoId)) {
         alert('この動画は既に追加されています');
