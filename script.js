@@ -437,15 +437,22 @@ async function updateAllChannels() {
             }
             hasChanges = true;
         } else if (!liveVideoId && channel.videoId) {
-            // ライブ配信が終了した
-            if (autoRemoveEnded) {
-                // 自動削除が有効な場合、動画を削除
-                videos = videos.filter(id => id !== channel.videoId);
-                console.log(`ライブ配信が終了したため削除しました: チャンネル ${channel.channelId}`);
+            // ライブ配信が終了した可能性があるため、現在の動画を確認
+            const currentStatus = apiKey ? await getVideoStatus(channel.videoId) : { status: 'unknown', title: '' };
+            if (currentStatus.status === 'ended') {
+                if (autoRemoveEnded) {
+                    videos = videos.filter(id => id !== channel.videoId);
+                    console.log(`ライブ配信が終了したため削除しました: チャンネル ${channel.channelId}`);
+                    channel.videoId = null;
+                    channel.status = 'none';
+                } else {
+                    channel.status = 'ended';
+                }
+                hasChanges = true;
+            } else {
+                // 検索で見つからなくても配信中の可能性があるため保持
+                channel.status = currentStatus.status;
             }
-            channel.videoId = null;
-            channel.status = 'none';
-            hasChanges = true;
         }
     }
     
@@ -720,7 +727,7 @@ async function renderVideos() {
     
     const renderVideoIds = showOnlyRegisteredChannels
         ? (apiKey
-            ? videos.filter(videoId => registeredChannelIds.has(videoChannelMap[videoId]))
+            ? videos.filter(videoId => channelVideoIds.has(videoId) || registeredChannelIds.has(videoChannelMap[videoId]))
             : videos.filter(videoId => channelVideoIds.has(videoId)))
         : videos;
 
