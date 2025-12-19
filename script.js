@@ -416,7 +416,7 @@ async function fetchVideoChannelIds(videoIds) {
 }
 
 // 全チャンネルを更新
-async function updateAllChannels() {
+async function updateAllChannels(forceRefresh = false) {
     let hasChanges = false;
     
     for (let channel of channels) {
@@ -484,7 +484,7 @@ async function updateAllChannels() {
     // 重複チェックと削除
     removeDuplicateVideos();
     
-    if (hasChanges) {
+    if (hasChanges || forceRefresh) {
         renderVideos();
     }
 }
@@ -575,7 +575,7 @@ function startAutoUpdate() {
     updateInterval = setInterval(() => {
         if (channels.length > 0 && apiKey) {
             console.log('Updating channels...');
-            updateAllChannels();
+            updateAllChannels(true);
         }
     }, intervalMs);
 }
@@ -756,6 +756,7 @@ async function renderVideos() {
     
     console.log(`${renderVideoIds.length}個の動画をレンダリング開始`);
     container.innerHTML = '';
+    let renderedCount = 0;
     
     // 各動画のステータスを取得して表示
     for (let i = 0; i < renderVideoIds.length; i++) {
@@ -773,9 +774,18 @@ async function renderVideos() {
         const channelInfo = channels.find(ch => ch.videoId === videoId);
         let statusHtml = '';
         
+        let videoStatus = null;
+
+        if (apiKey) {
+            videoStatus = await getVideoStatus(videoId);
+            if (!videoStatus || videoStatus.status !== 'live') {
+                continue;
+            }
+        }
+
+
         // ステータスバッジを表示する設定の場合のみ表示
-        if (showStatusBadge && apiKey && channelInfo) {
-            const videoStatus = await getVideoStatus(videoId);
+        if (showStatusBadge && apiKey && channelInfo && videoStatus) {
             let statusClass = '';
             let statusText = '';
             
@@ -813,6 +823,7 @@ async function renderVideos() {
         `;
         
         container.appendChild(wrapper);
+        renderedCount++;
         
         // YouTube Player を初期化
         if (typeof YT !== 'undefined' && YT.Player) {
@@ -849,6 +860,18 @@ async function renderVideos() {
                 ></iframe>
             `;
         }
+    }
+
+    if (renderedCount === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>配信中のライブがありません</h3>
+                <p>アーカイブは表示されません</p>
+            </div>
+        `;
+        console.log('renderVideos完了 - ライブ配信なし');
+        restoreScrollPositionIfNeeded();
+        return;
     }
 
     restoreScrollPositionIfNeeded();
