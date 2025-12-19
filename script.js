@@ -49,6 +49,24 @@ function findMatchingVideoByKeyword(items, keywordList) {
     return null;
 }
 
+function findMatchingVideoForChannel(items, channelId, keywordList) {
+    if (!items || items.length === 0) {
+        return null;
+    }
+    for (const item of items) {
+        const snippet = item && item.snippet ? item.snippet : null;
+        const snippetChannelId = snippet ? snippet.channelId : null;
+        const snippetTitle = snippet ? snippet.title : '';
+        if (snippetChannelId && snippetChannelId !== channelId) {
+            continue;
+        }
+        if (titleMatchesKeywords(snippetTitle, keywordList)) {
+            return item;
+        }
+    }
+    return null;
+}
+
 function escapeHtml(value) {
     if (value === undefined || value === null) {
         return '';
@@ -247,8 +265,9 @@ async function addChannel() {
             status: liveInfo.status,
             keywordFilter: keywordFilter
         });
-        
+
         videos.push(liveInfo.videoId);
+        videoChannelMap[liveInfo.videoId] = channelId;
     } else {
         // ライブ配信がない場合でもチャンネルを登録
         channels.push({
@@ -291,7 +310,7 @@ async function fetchChannelLiveStream(channelId, keywordFilter = '') {
             return null;
         }
         
-        const liveMatch = findMatchingVideoByKeyword(data.items, keywords);
+        const liveMatch = findMatchingVideoForChannel(data.items, channelId, keywords);
         if (liveMatch) {
             return { videoId: liveMatch.id.videoId, status: 'live' };
         }
@@ -302,7 +321,7 @@ async function fetchChannelLiveStream(channelId, keywordFilter = '') {
         const upcomingResponse = await fetch(upcomingUrl);
         const upcomingData = await upcomingResponse.json();
         
-        const upcomingMatch = findMatchingVideoByKeyword(upcomingData.items, keywords);
+        const upcomingMatch = findMatchingVideoForChannel(upcomingData.items, channelId, keywords);
         if (upcomingMatch) {
             return { videoId: upcomingMatch.id.videoId, status: 'upcoming' };
         }
@@ -435,6 +454,7 @@ async function updateAllChannels(forceRefresh = false) {
             if (!videos.includes(liveInfo.videoId)) {
                 videos.push(liveInfo.videoId);
             }
+            videoChannelMap[liveInfo.videoId] = channel.channelId;
             hasChanges = true;
         } else if (liveInfo && liveInfo.videoId === channel.videoId) {
             if (channel.status !== liveInfo.status) {
@@ -705,6 +725,9 @@ async function renderVideos() {
     const channelVideoIds = new Set(
         channels.map(channel => channel.videoId).filter(Boolean)
     );
+    const channelByVideoId = new Map(
+        channels.filter(channel => channel.videoId).map(channel => [channel.videoId, channel.channelId])
+    );
 
     if (showOnlyRegisteredChannels && apiKey && videos.length > 0) {
         const unknownIds = videos.filter(
@@ -732,7 +755,17 @@ async function renderVideos() {
     
     const renderVideoIds = showOnlyRegisteredChannels
         ? (apiKey
-            ? videos.filter(videoId => channelVideoIds.has(videoId) || registeredChannelIds.has(videoChannelMap[videoId]))
+            ? videos.filter(videoId => {
+                if (!channelVideoIds.has(videoId)) {
+                    return false;
+                }
+                const expectedChannelId = channelByVideoId.get(videoId);
+                const mappedChannelId = videoChannelMap[videoId];
+                if (mappedChannelId === undefined) {
+                    return true;
+                }
+                return expectedChannelId === mappedChannelId;
+            })
             : videos.filter(videoId => channelVideoIds.has(videoId)))
         : videos;
 
@@ -933,13 +966,23 @@ function renderChannelList() {
         channelItem.className = 'channel-item';
 
         let statusText = '待機中';
-        if (channel.videoId && channel.status === 'live') {
+        const hasVideoId = !!channel.videoId;
+        const hasMapEntry = hasVideoId && Object.prototype.hasOwnProperty.call(videoChannelMap, channel.videoId);
+        const mappedChannelId = hasVideoId ? videoChannelMap[channel.videoId] : null;
+
+        if (hasVideoId && apiKey && !hasMapEntry) {
+            fetchVideoChannelId(channel.videoId).then(() => renderChannelList());
+        }
+
+        if (hasVideoId && apiKey && hasMapEntry && mappedChannelId && mappedChannelId !== channel.channelId) {
+            statusText = `チャンネル不一致: ${channel.videoId}`;
+        } else if (hasVideoId && channel.status === 'live') {
             statusText = `📺 現在の配信: ${channel.videoId}`;
-        } else if (channel.videoId && channel.status === 'upcoming') {
+        } else if (hasVideoId && channel.status === 'upcoming') {
             statusText = `配信予定: ${channel.videoId}`;
-        } else if (channel.videoId && channel.status === 'ended') {
+        } else if (hasVideoId && channel.status === 'ended') {
             statusText = `終了: ${channel.videoId}`;
-        } else if (channel.videoId) {
+        } else if (hasVideoId) {
             statusText = `状態確認中: ${channel.videoId}`;
         }
         const keywordDisplay = channel.keywordFilter ? channel.keywordFilter : '指定なし';
@@ -980,6 +1023,7 @@ async function updateChannelKeyword(channelId, newKeywordValue) {
                 if (!videos.includes(liveInfo.videoId)) {
                     videos.push(liveInfo.videoId);
                 }
+                videoChannelMap[liveInfo.videoId] = channel.channelId;
             } else if (liveInfo && liveInfo.videoId === channel.videoId) {
                 channel.status = liveInfo.status;
             } else if (!liveInfo && channel.videoId) {
@@ -1368,6 +1412,7 @@ async function importChannels(event) {
                     if (!videos.includes(liveInfo.videoId)) {
                         videos.push(liveInfo.videoId);
                     }
+                    videoChannelMap[liveInfo.videoId] = channelId;
                 } else {
                     channels.push({
                         channelId: channelId,
