@@ -227,14 +227,14 @@ async function addChannel() {
     }
     
     // チャンネルのライブ配信を検索
-    const liveVideoId = await fetchChannelLiveStream(channelId, keywordFilter);
+    const liveInfo = await fetchChannelLiveStream(channelId, keywordFilter);
     
     // チャンネル名を取得
     const channelName = await fetchChannelName(channelId);
     
-    if (liveVideoId) {
+    if (liveInfo && liveInfo.videoId) {
         // 既に同じ動画が追加されているかチェック
-        if (videos.includes(liveVideoId)) {
+        if (videos.includes(liveInfo.videoId)) {
             alert('このライブ配信は既に追加されています');
             input.value = '';
             return;
@@ -243,12 +243,12 @@ async function addChannel() {
         channels.push({
             channelId: channelId,
             name: channelName,
-            videoId: liveVideoId,
-            status: 'live',
+            videoId: liveInfo.videoId,
+            status: liveInfo.status,
             keywordFilter: keywordFilter
         });
         
-        videos.push(liveVideoId);
+        videos.push(liveInfo.videoId);
     } else {
         // ライブ配信がない場合でもチャンネルを登録
         channels.push({
@@ -293,7 +293,7 @@ async function fetchChannelLiveStream(channelId, keywordFilter = '') {
         
         const liveMatch = findMatchingVideoByKeyword(data.items, keywords);
         if (liveMatch) {
-            return liveMatch.id.videoId;
+            return { videoId: liveMatch.id.videoId, status: 'live' };
         }
         
         // ライブ配信がない場合、予定されているライブを検索
@@ -304,7 +304,7 @@ async function fetchChannelLiveStream(channelId, keywordFilter = '') {
         
         const upcomingMatch = findMatchingVideoByKeyword(upcomingData.items, keywords);
         if (upcomingMatch) {
-            return upcomingMatch.id.videoId;
+            return { videoId: upcomingMatch.id.videoId, status: 'upcoming' };
         }
         
         return null;
@@ -420,23 +420,28 @@ async function updateAllChannels(forceRefresh = false) {
     let hasChanges = false;
     
     for (let channel of channels) {
-        const liveVideoId = await fetchChannelLiveStream(channel.channelId, channel.keywordFilter || '');
+        const liveInfo = await fetchChannelLiveStream(channel.channelId, channel.keywordFilter || '');
         
-        if (liveVideoId && liveVideoId !== channel.videoId) {
+        if (liveInfo && liveInfo.videoId && liveInfo.videoId !== channel.videoId) {
             // 新しいライブ配信が見つかった
             if (channel.videoId) {
                 // 古い動画を削除
                 videos = videos.filter(id => id !== channel.videoId);
             }
             
-            channel.videoId = liveVideoId;
-            channel.status = 'live';
+            channel.videoId = liveInfo.videoId;
+            channel.status = liveInfo.status;
             
-            if (!videos.includes(liveVideoId)) {
-                videos.push(liveVideoId);
+            if (!videos.includes(liveInfo.videoId)) {
+                videos.push(liveInfo.videoId);
             }
             hasChanges = true;
-        } else if (!liveVideoId && channel.videoId) {
+        } else if (liveInfo && liveInfo.videoId === channel.videoId) {
+            if (channel.status !== liveInfo.status) {
+                channel.status = liveInfo.status;
+                hasChanges = true;
+            }
+        } else if (!liveInfo && channel.videoId) {
             // ライブ配信が終了した可能性があるため、現在の動画を確認
             const currentStatus = apiKey ? await getVideoStatus(channel.videoId) : { status: 'unknown', title: '' };
             if (currentStatus.status === 'ended') {
@@ -928,8 +933,14 @@ function renderChannelList() {
         channelItem.className = 'channel-item';
 
         let statusText = '待機中';
-        if (channel.videoId) {
+        if (channel.videoId && channel.status === 'live') {
             statusText = `📺 現在の配信: ${channel.videoId}`;
+        } else if (channel.videoId && channel.status === 'upcoming') {
+            statusText = `配信予定: ${channel.videoId}`;
+        } else if (channel.videoId && channel.status === 'ended') {
+            statusText = `終了: ${channel.videoId}`;
+        } else if (channel.videoId) {
+            statusText = `状態確認中: ${channel.videoId}`;
         }
         const keywordDisplay = channel.keywordFilter ? channel.keywordFilter : '指定なし';
         const keywordValueAttr = escapeHtml(channel.keywordFilter || '');
@@ -959,17 +970,19 @@ async function updateChannelKeyword(channelId, newKeywordValue) {
 
     if (apiKey) {
         try {
-            const liveVideoId = await fetchChannelLiveStream(channel.channelId, channel.keywordFilter);
-            if (liveVideoId && liveVideoId !== channel.videoId) {
+            const liveInfo = await fetchChannelLiveStream(channel.channelId, channel.keywordFilter);
+            if (liveInfo && liveInfo.videoId && liveInfo.videoId !== channel.videoId) {
                 if (channel.videoId) {
                     videos = videos.filter(id => id !== channel.videoId);
                 }
-                channel.videoId = liveVideoId;
-                channel.status = 'live';
-                if (!videos.includes(liveVideoId)) {
-                    videos.push(liveVideoId);
+                channel.videoId = liveInfo.videoId;
+                channel.status = liveInfo.status;
+                if (!videos.includes(liveInfo.videoId)) {
+                    videos.push(liveInfo.videoId);
                 }
-            } else if (!liveVideoId && channel.videoId) {
+            } else if (liveInfo && liveInfo.videoId === channel.videoId) {
+                channel.status = liveInfo.status;
+            } else if (!liveInfo && channel.videoId) {
                 videos = videos.filter(id => id !== channel.videoId);
                 channel.videoId = null;
                 channel.status = 'none';
@@ -1340,20 +1353,20 @@ async function importChannels(event) {
             
             // チャンネルを追加
             if (apiKey) {
-                const liveVideoId = await fetchChannelLiveStream(channelId, keywordFilter);
+                const liveInfo = await fetchChannelLiveStream(channelId, keywordFilter);
                 const channelName = channelData.name || await fetchChannelName(channelId);
 
-                if (liveVideoId) {
+                if (liveInfo && liveInfo.videoId) {
                     channels.push({
                         channelId: channelId,
                         name: channelName,
-                        videoId: liveVideoId,
-                        status: 'live',
+                        videoId: liveInfo.videoId,
+                        status: liveInfo.status,
                         keywordFilter: keywordFilter
                     });
 
-                    if (!videos.includes(liveVideoId)) {
-                        videos.push(liveVideoId);
+                    if (!videos.includes(liveInfo.videoId)) {
+                        videos.push(liveInfo.videoId);
                     }
                 } else {
                     channels.push({
